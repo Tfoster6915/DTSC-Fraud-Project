@@ -25,6 +25,46 @@ def get_quarter(date):
     else:
         return 4
 
+
+def is_meaningful_sentence(sentence: str) -> bool:
+    """
+    Heuristically determine if a sentence is meaningful English text,
+    not a code snippet, rule, or junk.
+    """
+    s = sentence.strip()
+    s = re.sub(r'\s+', ' ', s)
+
+    # Too short or too long
+    if len(s.split()) < 5 or len(s) < 30:
+        return False
+    if len(s) > 1000:
+        return False
+
+    # Too many symbols
+    non_alpha_ratio = sum(1 for c in s if not c.isalpha() and c != ' ') / len(s)
+    if non_alpha_ratio > 0.4:
+        return False
+
+    # Known junk patterns
+    patterns = [
+        r"\$HTTP_PORTS", r"alert tcp", r"sid:\d+", r"http_header", r"http_uri",
+        r"flowbits", r"pcre:", r"\|[0-9A-Fa-f]{2}\|",
+        r"rev:\d+", r"msg:", r"metadata:", r"classtype:", r"content:",
+    ]
+    if any(re.search(p, s, re.IGNORECASE) for p in patterns):
+        return False
+
+    # URL or domain heavy
+    if re.search(r"https?://|www\.|\.com|\.gov|\.ru|\.top|\.net", s):
+        return False
+
+    # Code-like symbols
+    if re.search(r"[;{}<>@|$]", s):
+        return False
+
+    return True
+
+
 def scrape_pdf_links(page_url):
     """Return list of dicts: [{'title': ..., 'url': ..., 'date': datetime}, ...]"""
     response = requests.get(page_url)
@@ -61,6 +101,7 @@ def scrape_pdf_links(page_url):
 
     return pdf_entries
 
+
 def download_pdf(url, folder="pdfs"):
     """Download PDF to folder and return local file path."""
     os.makedirs(folder, exist_ok=True)
@@ -78,6 +119,7 @@ def download_pdf(url, folder="pdfs"):
         print(f"Failed to download {filename}")
         return None
 
+
 def extract_text(pdf_path):
     """Extract all text from PDF using PyMuPDF."""
     text = ""
@@ -88,6 +130,7 @@ def extract_text(pdf_path):
     except Exception as e:
         print(f"Error reading {pdf_path}: {e}")
     return text
+
 
 def find_keywords_and_sentences(text):
     """Return a dict of keyword counts and summary sentences containing them."""
@@ -100,8 +143,9 @@ def find_keywords_and_sentences(text):
         match_count = 0
         for sent in sentences:
             if pattern.search(sent):
-                match_count += 1
-                summary_sentences.append(sent.strip())
+                if is_meaningful_sentence(sent):  # 🔥 filter junk here
+                    match_count += 1
+                    summary_sentences.append(sent.strip())
         if match_count > 0:
             counts[keyword] = match_count
 
@@ -112,6 +156,7 @@ def find_keywords_and_sentences(text):
     summary = " ".join(summary_sentences).replace("\n", " ").replace("\r", " ")
 
     return counts, summary
+
 
 # -------------------------------
 # Main pipeline
