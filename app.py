@@ -34,12 +34,12 @@ st.set_page_config(page_title="Fraud Dashboard", layout="centered")
 # White background + dark blue text
 st.markdown("""
     <style>
-        body, .stApp {
-            background-color: white !important;
-            color: #0a1a3c !important;
+        body {
+            background-color: white;
+            color: black;
         }
-        h1, h2, h3, h4, h5, h6, div, p, span, label {
-            color: #0a1a3c !important;
+        .stApp {
+            background-color: white;
         }
     </style>
 """, unsafe_allow_html=True)
