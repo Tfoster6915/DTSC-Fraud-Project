@@ -1,78 +1,135 @@
-# -----------------------------
-# Streamlit Fraud Trend Dashboard
-# -----------------------------
-import pandas as pd
 import streamlit as st
-from collections import Counter
-import importlib.util
-from pathlib import Path
+import pandas as pd
+from supabase import create_client
+from dotenv import load_dotenv
+import os
+import matplotlib.pyplot as plt  # for pie chart
 
-# Page setup
-st.set_page_config(page_title="Fraud Trend Dashboard", page_icon="🔎", layout="centered")
+# -------------------------
+# Load secrets from .env
+# -------------------------
+load_dotenv()
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
 
-# Title
-st.markdown(
-    "<h1 style='text-align:center;color:#0A2E5C;'>🔎 Fraud Trend Dashboard</h1>",
-    unsafe_allow_html=True,
-)
+# Connect to Supabase
+supabase = create_client(url, key)
 
-# Load paths
-csv_path = Path("pdf_summaries.csv")
-keywords_path = Path("crime_keywords.py")
+# -------------------------
+# Get data from Supabase
+# -------------------------
+@st.cache_data
+def load_data():
+    data = supabase.table("fraud_keywords").select("*").execute()
+    df = pd.DataFrame(data.data)
+    return df
 
-# Check files exist
-if not csv_path.exists():
-    st.error("Missing pdf_summaries.csv — run scraping first.")
-    st.stop()
+df = load_data()
 
-if not keywords_path.exists():
-    st.error("Missing crime_keywords.py — add it to this folder.")
-    st.stop()
+# -------------------------
+# Streamlit Page Setup
+# -------------------------
+st.set_page_config(page_title="Fraud Dashboard", layout="centered")
 
-# Load CSV
-df = pd.read_csv(csv_path)
-
-# Load keyword trends
-spec = importlib.util.spec_from_file_location("crime_keywords", keywords_path)
-kw_mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(kw_mod)
-
-TRENDS = getattr(kw_mod, "TRENDS", {})
-phrases = [p for v in TRENDS.values() for p in v]
-
-# Extract text and count phrases
-text_cols = [c for c in df.columns if df[c].dtype == object]
-text_data = " ".join(" ".join(str(df[c].fillna('').tolist())) for c in text_cols).lower()
-
-phrase_counts = Counter()
-for phrase in phrases:
-    phrase_counts[phrase] = text_data.count(phrase.lower())
-
-# Top 5 keywords
-top5 = pd.DataFrame(phrase_counts.most_common(5), columns=["Keyword/Phrase", "Mentions"])
-
-# Top 3 trends
-trend_totals = {trend: sum(phrase_counts[p] for p in words) for trend, words in TRENDS.items()}
-top3 = pd.DataFrame(sorted(trend_totals.items(), key=lambda x: x[1], reverse=True)[:3],
-                    columns=["Trend", "Mentions"])
-
-# Dark blue theme styling
-st.markdown(
-    """
+# White background + dark blue text
+st.markdown("""
     <style>
-    body { background-color: #0A2E5C; color: white; }
-    .stDataFrame { background-color: #0A2E5C !important; }
+        body, .stApp {
+            background-color: white !important;
+            color: #0a1a3c !important;
+        }
+        h1, h2, h3, h4, h5, h6, div, p, span, label {
+            color: #0a1a3c !important;
+        }
     </style>
-    """,
-    unsafe_allow_html=True,
+""", unsafe_allow_html=True)
+
+# Title + bold subtitle
+st.title("📊 Fraud Keyword Analysis Dashboard")
+st.markdown("<h3><b>DTSC Project Team 2</b></h3>", unsafe_allow_html=True)
+
+# -------------------------
+# YEAR DROPDOWN FILTER
+# -------------------------
+st.subheader("🔽 Filter by Year")
+
+years = ["All Years"] + sorted(df["year"].unique().tolist())
+selected_year = st.selectbox("Choose a year:", years)
+
+if selected_year != "All Years":
+    filtered_df = df[df["year"] == selected_year]
+else:
+    filtered_df = df.copy()
+
+# -------------------------
+# SHOW FILTERED RAW DATA
+# -------------------------
+st.subheader(" Filtered Keyword Data")
+st.dataframe(filtered_df)
+
+# -------------------------
+# DOWNLOAD CSV BUTTON
+# -------------------------
+st.subheader("⬇️ Download Filtered Data")
+st.write("If you can see this text, the download button is directly below:")
+
+csv_data = filtered_df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    label="📥 Download Filtered Data as CSV",
+    data=csv_data,
+    file_name="filtered_fraud_keywords.csv",
+    mime="text/csv"
 )
 
-# Show charts
-st.subheader("Top 5 Keywords / Phrases")
-st.bar_chart(top5.set_index("Keyword/Phrase"), color="#0A2E5C")
+# -------------------------
+# TOP 5 KEYWORDS (Filtered)
+# -------------------------
+st.subheader(" Top 5 Keywords (Filtered View)")
 
-st.subheader("Top 3 Fraud Trends")
-st.bar_chart(top3.set_index("Trend"), color="#0A2E5C")
+if not filtered_df.empty:
+    top_keywords = (
+        filtered_df.groupby("keyword")["count"]
+        .sum()
+        .sort_values(ascending=False)
+        .head(5)
+    )
 
-# Footer
-st.markdown("<p style='text-align:center;color:gray;'>© 2025 Fraud Project</p>", unsafe_allow_html=True)
+    st.bar_chart(top_keywords)
+
+    # -------------------------
+    # PIE CHART FOR TOP 5 KEYWORDS
+    # -------------------------
+    st.subheader(" Keyword Share (Top 5, Filtered)")
+
+    fig, ax = plt.subplots()
+    ax.pie(
+        top_keywords.values,
+        labels=top_keywords.index,
+        autopct="%1.1f%%"
+    )
+    ax.set_title("Top 5 Keyword Share")
+
+    st.pyplot(fig)
+else:
+    st.info("No data available for this filter.")
+
+# -------------------------
+# TOP 3 TRENDS OVER TIME
+# -------------------------
+st.subheader(" Top 3 Fraud Trends Over Time (All Data)")
+
+trends = (
+    df.groupby("year")["count"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(3)
+)
+
+st.line_chart(trends)
+
+# -------------------------
+# FOOTER
+# -------------------------
+st.markdown("---")
+
