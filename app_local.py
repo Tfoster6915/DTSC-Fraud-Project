@@ -22,13 +22,23 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    h1, h2, h3 {
+    /* Import Poppins Font */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 600 !important;
         color: #0B3D91;
     }
 
     .block-container {
         max-width: 1200px;
         padding-top: 1.5rem;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .stCard {
@@ -37,6 +47,16 @@ st.markdown(
         border-radius: 0.75rem;
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         margin-bottom: 1.5rem;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    .stMarkdown, .stText, .stDataFrame, .stTable, .stDownloadButton, .stButton {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    /* Sidebar text */
+    section[data-testid="stSidebar"] * {
+        font-family: 'Poppins', sans-serif !important;
     }
     </style>
     """,
@@ -44,7 +64,8 @@ st.markdown(
 )
 
 # ----------------------------------
-# Simple keyword definitions
+# Keyword definitions + impacts
+# (keys are LOWERCASE; we normalize input before lookup)
 # ----------------------------------
 KEYWORD_DEFINITIONS = {
     "threats_of_violence": (
@@ -60,8 +81,8 @@ KEYWORD_DEFINITIONS = {
         "spy on users, or damage systems."
     ),
     "phishing": (
-        "Fraudulent emails, texts, or websites that pretend to be trusted sources to trick "
-        "people into sharing passwords, banking details, or other sensitive information."
+        "Fraud where scammers send fake emails, texts, or messages pretending to be trusted "
+        "sources to trick people into giving passwords, banking details, or personal information."
     ),
     "extortion": (
         "Scams where criminals threaten to release information, cause harm, or take action "
@@ -74,16 +95,125 @@ KEYWORD_DEFINITIONS = {
     "credit_card_fraud": (
         "Unauthorized use of a person’s credit or debit card, or card number, to make purchases "
         "or withdraw money."
-    )
+    ),
+    "healthcare": (
+        "Fraud involving fake medical bills, false insurance claims, or attempts to steal medical "
+        "identities. These scams often target patients, clinics, or insurance companies."
+    ),
+    "investment": (
+        "Fraud involving fake or misleading investment opportunities, such as Ponzi schemes, "
+        "fake trading platforms, or guaranteed-return offers designed to steal money."
+    ),
+    # both spellings so 'gift card' and 'giftcard' work
+    "gift card": (
+        "A scam where criminals convince victims to buy gift cards and send the codes, often "
+        "pretending to be a boss, government official, or family member in trouble."
+    ),
+    "giftcard": (
+        "A scam where criminals convince victims to buy gift cards and send the codes, often "
+        "pretending to be a boss, government official, or family member in trouble."
+    ),
+    "social media": (
+        "Fraud that starts on platforms like Facebook, Instagram, TikTok, or Snapchat, including "
+        "fake giveaways, romance scams, fake profiles, impersonation, or malicious links."
+    ),
+    "data breach": (
+        "A security incident where personal, financial, or private data is exposed or stolen from a "
+        "company, website, or online service."
+    ),
+    "business email compromise": (
+        "A targeted scam where criminals hack or spoof business email accounts to trick employees or "
+        "partners into sending money, gift cards, payroll funds, or sensitive documents."
+    ),
+    "crypto": (
+        "Fraud involving cryptocurrencies, such as fake investment platforms, fake coins, or scams that "
+        "trick people into sending crypto to a scammer’s wallet."
+    ),
 }
+
+KEYWORD_IMPACTS = {
+    "threats_of_violence": (
+        "Can cause intense fear, emotional distress, and pressure victims into quick decisions. "
+        "Victims may lose money, reveal private information, or change behavior out of fear."
+    ),
+    "ransomware": (
+        "Can shut down computers, hospitals, schools, or businesses until a ransom is paid. "
+        "This can lead to major financial losses, downtime, and permanent loss of important data."
+    ),
+    "malware": (
+        "Can silently steal passwords, banking details, or files. It may also slow systems, "
+        "break devices, or spread to other computers on a network."
+    ),
+    "phishing": (
+        "Victims may lose access to important accounts, have money stolen, or experience identity theft. "
+        "Businesses may suffer data loss or unauthorized access."
+    ),
+    "extortion": (
+        "Can force victims to pay money to avoid embarrassment, harm, or the release of private data. "
+        "This can create long-term emotional stress and financial harm."
+    ),
+    "identity_theft": (
+        "Can damage a person’s credit, create fake accounts in their name, and cause long, stressful "
+        "disputes with banks, credit bureaus, and government agencies."
+    ),
+    "credit_card_fraud": (
+        "Can cause direct financial loss, unexpected charges, and blocked cards. "
+        "Victims may spend time disputing charges and monitoring accounts."
+    ),
+    "healthcare": (
+        "Victims may face financial loss, denial of needed medical treatment, corrupted medical records, "
+        "or exposure of sensitive health information. This type of fraud also increases healthcare costs "
+        "for everyone."
+    ),
+    "investment": (
+        "Victims may lose large amounts of money, retirement savings, or emergency funds. "
+        "It often leads to long-term financial harm and emotional stress."
+    ),
+    "gift card": (
+        "Victims usually lose money instantly because gift card transactions cannot be reversed. "
+        "They may also feel pressured, scared, or embarrassed after being manipulated."
+    ),
+    "giftcard": (
+        "Victims usually lose money instantly because gift card transactions cannot be reversed. "
+        "They may also feel pressured, scared, or embarrassed after being manipulated."
+    ),
+    "social media": (
+        "Victims may lose money, lose control of accounts, have private content leaked, or be impersonated. "
+        "Scams can also lead to harassment or emotional harm."
+    ),
+    "data breach": (
+        "Stolen information can be reused for identity theft, phishing, and financial fraud. "
+        "Victims may spend years monitoring accounts and repairing damage."
+    ),
+    "business email compromise": (
+        "Businesses can lose large sums of money through fake wire transfers or payroll rerouting, and "
+        "trust between employees and partners can be damaged."
+    ),
+    "crypto": (
+        "Victims can lose their entire crypto investment because transactions are hard to reverse. "
+        "Scams may also steal wallet keys, giving criminals full control over funds."
+    ),
+}
+
+def _norm_key(kw: str) -> str:
+    """Normalize a keyword for dictionary lookup: lowercase + strip spaces."""
+    if kw is None:
+        return ""
+    return str(kw).strip().lower()
 
 def describe_keyword(kw: str) -> str:
     """Return a friendly human description for a keyword, if we know it."""
-    return KEYWORD_DEFINITIONS.get(kw, "")
+    return KEYWORD_DEFINITIONS.get(_norm_key(kw), "")
+
+def impacts_keyword(kw: str) -> str:
+    """Return possible impacts for a keyword, if we know them."""
+    return KEYWORD_IMPACTS.get(_norm_key(kw), "")
 
 def pretty_keyword_name(kw: str) -> str:
-    """Turn 'threats_of_violence' into 'Threats Of Violence'."""
-    return kw.replace("_", " ").title()
+    """Turn 'threats_of_violence' or 'data breach' into 'Threats Of Violence' / 'Data Breach'."""
+    if kw is None:
+        return ""
+    return str(kw).replace("_", " ").title()
 
 # ----------------------------------
 # Supabase client (LOCAL ONLY)
@@ -113,9 +243,7 @@ def get_supabase_client():
 @st.cache_data
 def load_ic3_alerts() -> pd.DataFrame:
     supabase = get_supabase_client()
-
     resp = supabase.table("ic3_alerts").select("*").execute()
-
     data = resp.data or []
     df = pd.DataFrame(data)
 
@@ -179,6 +307,7 @@ df_keywords = build_keyword_dataframe(df_raw)
 
 st.title("Fraud Reports Dashboard")
 st.markdown("## DTSC Project Team 2")
+st.markdown("##### Authors: Taylor Foster, Sam McClure, Jayson Allman, and Yousef Eddin")
 
 if df_keywords.empty:
     st.error("No keyword data found.")
@@ -346,13 +475,13 @@ st.altair_chart(heatmap, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ----------------------------------
-# KEYWORD DETAILS SECTION
+# KEYWORD DETAILS SECTION (ONLY WHEN DROPDOWN SELECTED)
 # ----------------------------------
 st.markdown('<div class="stCard">', unsafe_allow_html=True)
 st.subheader("Keyword Details & Summary")
 
 if keyword_choice == "All keywords":
-    st.write("Select a keyword on the left to see detailed trends for a single fraud type.")
+    st.write("Select a keyword on the left to see a definition and possible impacts for that fraud type.")
 else:
     kw_df = df_keywords[df_keywords["keyword"] == keyword_choice]
 
@@ -387,18 +516,33 @@ else:
         peak_year = int(peak_row["year"])
         peak_val = int(peak_row["count"])
 
-        st.markdown(f"**Total mentions:** {total}")
+        pretty_name = pretty_keyword_name(keyword_choice)
+        desc = describe_keyword(keyword_choice)
+        impact = impacts_keyword(keyword_choice)
+
+        st.markdown(f"**Selected keyword:** {pretty_name}")
+        st.markdown(f"**Total mentions in dataset:** {total}")
         st.markdown(f"**Highest activity:** {peak_val} mentions in **{peak_year}**")
 
-        # Add definition if we know this keyword
-        desc = describe_keyword(keyword_choice)
         if desc:
-            st.markdown(f"**What this keyword means:** {desc}")
+            st.markdown(f"**Definition – {pretty_name}:** {desc}")
+        else:
+            st.markdown(
+                f"**Definition – {pretty_name}:** No detailed definition is documented yet for this keyword."
+            )
+
+        if impact:
+            st.markdown(f"**Possible impacts – {pretty_name}:** {impact}")
+        else:
+            st.markdown(
+                f"**Possible impacts – {pretty_name}:** Impacts for this keyword are not specifically documented here, "
+                "but they may include financial loss, stress, and damage to accounts or data."
+            )
 
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ----------------------------------
-# AI SUMMARY OF VIEW (WITH DEFINITIONS)
+# AI SUMMARY OF VIEW (NAMES + COUNTS ONLY)
 # ----------------------------------
 st.markdown('<div class="stCard">', unsafe_allow_html=True)
 st.subheader("AI-Generated Summary")
@@ -411,45 +555,62 @@ years_in_view = sorted(df_filtered["year"].dropna().unique())
 if year_choice == "All years":
     if len(years_in_view) >= 2:
         summary_lines.append(
-            f"- This dashboard shows fraud activity from **{years_in_view[0]} to {years_in_view[-1]}**."
+            f"- This dashboard shows fraud keyword activity from **{years_in_view[0]} to {years_in_view[-1]}**."
         )
     elif len(years_in_view) == 1:
         summary_lines.append(
-            f"- This dashboard shows fraud activity for the year **{years_in_view[0]}**."
+            f"- This dashboard shows fraud keyword activity for the year **{years_in_view[0]}**."
         )
 else:
-    summary_lines.append(f"- Showing results for **{year_choice}**.")
+    summary_lines.append(f"- The charts are filtered to the year **{year_choice}**.")
 
-# Keyword focus
+# Source / pipeline context
+summary_lines.append(
+    "- The data is based on IC3-style fraud report summaries where important keywords were extracted, "
+    "stored in Supabase, and visualized here in Streamlit to highlight major fraud patterns."
+)
+
+# Keyword focus (from sidebar)
 if keyword_choice != "All keywords":
-    pretty_name = pretty_keyword_name(keyword_choice)
-    summary_lines.append(f"- The view is focused on the fraud keyword **{pretty_name}**.")
-    desc = describe_keyword(keyword_choice)
-    if desc:
-        summary_lines.append(f"  - {pretty_name}: {desc}")
+    pretty_name_focus = pretty_keyword_name(keyword_choice)
+    summary_lines.append(f"- The current view is focused on the fraud keyword **{pretty_name_focus}**.")
+    summary_lines.append("  - See the 'Keyword Details & Summary' card above for its definition and impacts.")
 
-# Top 3 trends (names + definitions)
+# Top 3 trends (names only)
 if len(top3_list) >= 1:
     main_kw = top3_list[0]
     main_name = pretty_keyword_name(main_kw)
-    summary_lines.append(f"- The most common trend in this view is **{main_name}**.")
-    main_desc = describe_keyword(main_kw)
-    if main_desc:
-        summary_lines.append(f"  - {main_name}: {main_desc}")
+    summary_lines.append(f"- Overall, the most common trend under the current filters is **{main_name}**.")
 
 if len(top3_list) >= 2:
-    for extra_kw in top3_list[1:]:
-        extra_name = pretty_keyword_name(extra_kw)
-        summary_lines.append(f"- Another major trend is **{extra_name}**.")
-        extra_desc = describe_keyword(extra_kw)
-        if extra_desc:
-            summary_lines.append(f"  - {extra_name}: {extra_desc}")
+    other_names = [pretty_keyword_name(kw) for kw in top3_list[1:]]
+    if other_names:
+        summary_lines.append(
+            "- Other major trends in this view include: " +
+            ", ".join(f"**{nm}**" for nm in other_names) + "."
+        )
+
+# Top 5 overview (names + counts only)
+summary_lines.append("- In this filtered view, the **Top 5 fraud keywords by total mentions** are:")
+for _, row in top5.iterrows():
+    kw = row["keyword"]
+    cnt = int(row["count"])
+    name = pretty_keyword_name(kw)
+    summary_lines.append(f"  - **{name}** – {cnt} mentions.")
 
 # Total counts
 total_mentions = int(df_filtered["count"].sum())
-summary_lines.append(f"- The filtered dataset contains **{total_mentions} total keyword mentions**.")
-summary_lines.append("- The heatmap highlights which fraud types are most active across different years.")
-summary_lines.append("- These patterns can help identify where education, monitoring, and prevention efforts should focus.")
+summary_lines.append(f"- Across all selected records, there are **{total_mentions} keyword mentions** in total.")
+
+# High-level interpretation
+summary_lines.append(
+    "- The bar chart and line chart show which fraud types are most common and how their activity changes over time, "
+    "while the heatmap highlights which keywords are strongest in each year."
+)
+summary_lines.append(
+    "- These patterns can help identify where education, monitoring, and prevention efforts should focus, "
+    "especially on the most frequently mentioned fraud types."
+)
 
 st.markdown("\n".join(summary_lines))
 st.markdown('</div>', unsafe_allow_html=True)
